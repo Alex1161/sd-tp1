@@ -1,0 +1,36 @@
+version: '3.9'
+name: tp0
+services:
+  server:
+    container_name: server
+    image: server:latest
+    entrypoint: python3 /main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+    volumes:
+      - ./server/config.ini:/config.ini
+
+  client:
+    image: client:latest
+    entrypoint: python3 /main.py
+    deploy:
+      replicas: ${CLIENT_REPLICAS}
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini
+
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.125.0/24
