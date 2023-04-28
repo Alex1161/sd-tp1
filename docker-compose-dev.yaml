@@ -1,15 +1,28 @@
 version: '3.9'
 name: tp0
 services:
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15672:15672
+    networks:
+      - testing_net
+
   server:
     container_name: server
     image: server:latest
     entrypoint: python3 /main.py
+    build:
+      dockerfile: server/server.dockerfile
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
+    depends_on:
+      - rabbitmq
     volumes:
       - ./server/config.ini:/config.ini
 
@@ -18,6 +31,8 @@ services:
     entrypoint: python3 /main.py
     deploy:
       replicas: ${CLIENT_REPLICAS}
+    build:
+      dockerfile: client/client.dockerfile
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
@@ -27,6 +42,7 @@ services:
       - server
     volumes:
       - ./client/config.ini:/config.ini
+      - ./client/data/:/data/
 
 networks:
   testing_net:
