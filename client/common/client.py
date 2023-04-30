@@ -1,7 +1,12 @@
+from .send_error import SendError
 import socket
 import struct
 import logging
 HEADER_SIZE = 4
+ACK_SIZE = 1
+ACK = b'0'
+EOD_SIZE = 3
+EOD = b'EOD'
 
 
 class Client:
@@ -10,9 +15,9 @@ class Client:
         self.__client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__client_socket.connect((host, port))
 
-    def __close_client(self):
-        self._server_socket.close()
-        logging.info('action: close_server | result: success')
+    def close_client(self):
+        self.__client_socket.close()
+        logging.info('action: close_client | result: success')
 
     def run(self):
         self.__handle_connection()
@@ -41,21 +46,24 @@ class Client:
 
         return msg
 
-    def __send_msg(self, conn, msg):
+    def __send_data(self, data):
         # Pack message size into header
-        data = msg.encode('utf-8')
         data_size = len(data)
         header = struct.pack('<I', data_size)
-        # Send header and message
-        conn.sendall(header + data)
 
-    def __handle_connection(self):
-        try:
-            msg = 'Hello server from ' + self.__client_id
-            self.__send_msg(self.__client_socket, msg)
-            new_msg = self.__receive_msg(self.__client_socket)
-            logging.info(f'action: receive_message | result: success | id: {self.__client_id} | msg: {new_msg}')
-        except OSError as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
-        finally:
-            self.__client_socket.close()
+        # Send header and message
+        self.__client_socket.sendall(header + data)
+
+    def send_msg(self, msg):
+        self.__send_data(msg)
+
+        # Receiving ACK or ERROR from the server
+        self.__recv_ack()
+
+    def __recv_ack(self):
+        ack = self.__recv(self.__client_socket, ACK_SIZE)
+        if ack != ACK:
+            raise SendError
+
+    def send_eod(self):
+        self.__send_data(EOD)

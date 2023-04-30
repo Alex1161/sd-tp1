@@ -23,6 +23,7 @@ def initialize_config():
         config_params["server_port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["server_ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
+        config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -36,6 +37,7 @@ def main():
     logging_level = config_params["logging_level"]
     server_ip = config_params["server_ip"]
     server_port = config_params["server_port"]
+    chunk_size = config_params["chunk_size"]
 
     initialize_log(logging_level)
 
@@ -47,8 +49,24 @@ def main():
     client_id = os.environ['HOSTNAME']
 
     client = Client(client_id, server_ip, server_port)
-    client.run()
 
+    send_file(client, 'data/stations.csv', chunk_size)
+    send_file(client, 'data/weather.csv', chunk_size)
+    send_file(client, 'data/trips.csv', chunk_size)
+
+    client.send_eod()
+
+    client.close_client()
+
+
+def send_file(client: Client, filename: str, chunk_size: int):
+    with open(filename, 'rb') as f:
+        while True:
+            data = f.read(chunk_size)
+            if not data:
+                break
+
+            client.send_msg(data)
 
 def initialize_log(logging_level):
     """

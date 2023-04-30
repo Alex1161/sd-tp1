@@ -4,20 +4,24 @@ import logging
 import signal
 import sys
 HEADER_SIZE = 4
+ACK = b'0'
+ERROR = b'1'
+EOD = b'EOD'
 
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, chunk_size):
+        self._chunk_size = chunk_size
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         signal.signal(signal.SIGTERM, self.__exit_gracefully)
 
     def __exit_gracefully(self, *args):
-        self.__close_server()
+        self.close_server()
         sys.exit(0)
 
-    def __close_server(self):
+    def close_server(self):
         self._server_socket.close()
         logging.info('action: close_server | result: success')
 
@@ -39,22 +43,24 @@ class Server:
 
         return data
 
-    def __receive_msg(self, conn):
+    def __receive_data(self, conn):
         # Receive msg_size
         msg_size = self.__recv(conn, HEADER_SIZE)
         msg_size = struct.unpack('<I', msg_size)[0]
 
         # Receive message data
         data = self.__recv(conn, msg_size)
-        msg = data.decode('utf-8')
 
-        return msg
+        conn.sendall(ACK)
+
+        return data
 
     def __send_msg(self, conn, msg):
         # Pack message size into header
         data = msg.encode('utf-8')
         data_size = len(data)
         header = struct.pack('<I', data_size)
+
         # Send header and message
         conn.sendall(header + data)
 
@@ -64,15 +70,18 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
-        try:
-            msg = self.__receive_msg(client_sock)
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            self.__send_msg(client_sock, msg)
-        except OSError as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
-        finally:
-            client_sock.close()
+        while True:
+            try:
+                data = self.__receive_data(client_sock)
+                if data == EOD:
+                    break
+
+                msg = data.decode('utf-8')
+                addr = client_sock.getpeername()
+                logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+            except OSError as e:
+                logging.error(f"action: receive_message | result: fail | error: {e}")
+                client_sock.close()
 
     def __accept_new_connection(self):
         """

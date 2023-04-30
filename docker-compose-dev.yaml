@@ -1,15 +1,6 @@
 version: '3.9'
 name: tp0
 services:
-  rabbitmq:
-    build:
-      context: ./rabbitmq
-      dockerfile: rabbitmq.dockerfile
-    ports:
-      - 15672:15672
-    networks:
-      - testing_net
-
   server:
     container_name: server
     image: server:latest
@@ -19,10 +10,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+      - CHUNK_SIZE=${CHUNK_SIZE}
     networks:
       - testing_net
-    depends_on:
-      - rabbitmq
     volumes:
       - ./server/config.ini:/config.ini
 
@@ -36,13 +26,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+      - CHUNK_SIZE=${CHUNK_SIZE}
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini
-      - ./client/data/:/data/
+      - ./client/data_test/:/data/
 
 networks:
   testing_net:
