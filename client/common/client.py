@@ -5,8 +5,8 @@ import logging
 HEADER_SIZE = 4
 ACK_SIZE = 1
 ACK = b'0'
-EOD_SIZE = 3
 EOD = b'EOD'
+EOF = b'EOF'
 
 
 class Client:
@@ -66,4 +66,7 @@ class Client:
             raise SendError
 
     def send_eod(self):
-        self.__send_data(EOD)
+        self.send_msg(EOD)
+
+    def send_eof(self):
+        self.send_msg(EOF)

@@ -7,6 +7,7 @@ HEADER_SIZE = 4
 ACK = b'0'
 ERROR = b'1'
 EOD = b'EOD'
+EOF = b'EOF'
 
 
 class Server:
@@ -73,7 +74,11 @@ class Server:
         while True:
             try:
                 data = self.__receive_data(client_sock)
-                if data == EOD:
+                if data == EOF:
+                    logging.info(f'action: EOF | result: received | ip: {addr[0]}')
+                    continue
+                elif data == EOD:
+                    logging.info(f'action: EOD | result: received | ip: {addr[0]}')
                     break
 
                 msg = data.decode('utf-8')
@@ -82,6 +87,7 @@ class Server:
             except OSError as e:
                 logging.error(f"action: receive_message | result: fail | error: {e}")
                 client_sock.close()
+                break
 
     def __accept_new_connection(self):
         """

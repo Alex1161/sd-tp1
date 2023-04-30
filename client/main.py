@@ -51,9 +51,10 @@ def main():
     client = Client(client_id, server_ip, server_port)
 
     send_file(client, 'data/stations.csv', chunk_size)
+    client.send_eof()
     send_file(client, 'data/weather.csv', chunk_size)
+    client.send_eof()
     send_file(client, 'data/trips.csv', chunk_size)
-
     client.send_eod()
 
     client.close_client()
