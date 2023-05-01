@@ -78,9 +78,9 @@ class Server:
                 data = self.__receive_data(client_sock)
                 addr = client_sock.getpeername()
                 if data == EOF:
-                    logging.info(f'action: EOF | result: received | ip: {addr[0]}')
                     self._processor.end_of_file()
                     self._processor = self._processor.get_next_processor()
+                    logging.info(f'action: EOF | result: received | ip: {addr[0]}')
                     continue
                 elif data == EOD:
                     logging.info(f'action: EOD | result: received | ip: {addr[0]}')
