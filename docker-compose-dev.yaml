@@ -1,6 +1,20 @@
 version: '3.9'
 name: tp0
 services:
+  rain_filter:
+    image: rain_filter:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: rain_filter/rain_filter.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./rain_filter/config.ini:/config.ini
+
   server:
     container_name: server
     image: server:latest
@@ -9,10 +23,12 @@ services:
       dockerfile: server/server.dockerfile
     environment:
       - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
       - CHUNK_SIZE=${CHUNK_SIZE}
     networks:
       - testing_net
+    depends_on:
+      - rain_filter
     volumes:
       - ./server/config.ini:/config.ini
 
@@ -25,7 +41,7 @@ services:
       dockerfile: client/client.dockerfile
     environment:
       - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
       - CHUNK_SIZE=${CHUNK_SIZE}
     networks:
       - testing_net

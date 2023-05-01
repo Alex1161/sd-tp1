@@ -43,7 +43,7 @@ def main():
 
     # Log config parameters at the beginning of the program to verify
     # the configuration of the component
-    logging.debug(f"action: config | result: success | server_port: {server_port} | server_ip: {server_ip} | logging_level: {logging_level}")
+    logging.debug(f"action: config | result: success | server_port: {server_port} | server_ip: {server_ip} | logging_level: {logging_level} | chunk_size: {chunk_size}")
 
     # Get a unique id from container envs variables
     client_id = os.environ['HOSTNAME']

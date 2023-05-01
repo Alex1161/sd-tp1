@@ -2,6 +2,7 @@ SHELL := /bin/bash
 PWD := $(shell pwd)
 export CLIENT_REPLICAS=1
 export CHUNK_SIZE=1024
+export LOGGING_LEVEL=INFO
 
 all:
 

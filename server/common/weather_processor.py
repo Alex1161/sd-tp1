@@ -20,9 +20,9 @@ class WeatherProcessor(Processor):
         if len(msgs) == 0:
             return
 
-        logging.info(f'action: weather_processor_processing | result: success | msg_to_rain_filter: {msgs[0]}')
+        logging.debug(f'action: weather_processor_processing | result: success | msg_to_rain_filter: {msgs[0]}')
 
     def end_of_file(self):
         last_msgs = super().get_last_msgs_filtered()
 
-        logging.info(f'action: weather_processor_processing_last | result: success | msg_to_rain_filter: {last_msgs[0]}')
+        logging.debug(f'action: weather_processor_processing_last | result: success | msg_to_rain_filter: {last_msgs[0]}')

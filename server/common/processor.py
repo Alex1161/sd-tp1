@@ -7,7 +7,7 @@ class Processor():
         msg = self._rest_last_msg + msg
         rows = msg.split('\n')
 
-        # Separate last element because if it is incomplete
+        # Separate last element because it could be incomplete
         self._rest_last_msg = rows[-1]
         return rows[:-1]
 
