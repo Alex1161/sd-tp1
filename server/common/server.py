@@ -83,6 +83,7 @@ class Server:
                     logging.info(f'action: EOF | result: received | ip: {addr[0]}')
                     continue
                 elif data == EOD:
+                    self._processor.end_of_file()
                     logging.info(f'action: EOD | result: received | ip: {addr[0]}')
                     break
 
