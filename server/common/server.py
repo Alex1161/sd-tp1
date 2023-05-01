@@ -3,6 +3,7 @@ import struct
 import logging
 import signal
 import sys
+from .stations_processor import StationsProcessor
 HEADER_SIZE = 4
 ACK = b'0'
 ERROR = b'1'
@@ -16,6 +17,7 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self._processor = StationsProcessor()
         signal.signal(signal.SIGTERM, self.__exit_gracefully)
 
     def __exit_gracefully(self, *args):
@@ -74,16 +76,17 @@ class Server:
         while True:
             try:
                 data = self.__receive_data(client_sock)
+                addr = client_sock.getpeername()
                 if data == EOF:
                     logging.info(f'action: EOF | result: received | ip: {addr[0]}')
+                    self._processor.end_of_file()
+                    self._processor = self._processor.get_next_processor()
                     continue
                 elif data == EOD:
                     logging.info(f'action: EOD | result: received | ip: {addr[0]}')
                     break
 
-                msg = data.decode('utf-8')
-                addr = client_sock.getpeername()
-                logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+                self._processor.process(data)
             except OSError as e:
                 logging.error(f"action: receive_message | result: fail | error: {e}")
                 client_sock.close()
