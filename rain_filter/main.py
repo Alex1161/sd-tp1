@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+from rain_filter import RainFilter
 import logging
 import os
 
@@ -40,6 +41,9 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | chunk_size: {chunk_size} | "
                   f"logging_level: {logging_level}")
+
+    rain_filter = RainFilter()
+    rain_filter.run()
 
 
 def initialize_log(logging_level):

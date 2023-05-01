@@ -18,7 +18,8 @@ class TripsProcessor(Processor):
             [RAIN_FILTER_FIELDS, TIME_FILTER_FIELDS, MONT_ROYAL_FILTER_FIELDS]
         )
 
-        if len(msgs) == 0:
+        # Atipic case, when the last msg is a chunk of the last line
+        if msgs[0] == '':
             return
 
         logging.debug(f'action: trips_processor_processing | result: success | msg_to_rain_filter: {msgs[0]}')
