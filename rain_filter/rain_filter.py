@@ -63,7 +63,6 @@ class RainFilter():
             msg = trips_rain.to_csv(None, index=False, header=False)
             logging.debug(f'action: rain_filter_filtering | result: success | msg_filtered: {msg}')
 
-
     def run(self):
         self._channel.basic_qos(prefetch_count=1)
         self._channel.basic_consume(queue='task_queue', on_message_callback=self.filter_msg)
