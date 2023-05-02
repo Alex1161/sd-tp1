@@ -1,7 +1,7 @@
 version: '3.9'
 name: tp0
 services:
-  rabbitmq:
+  weather_queue:
     build:
       context: ./rabbitmq
       dockerfile: rabbitmq.dockerfile
@@ -11,7 +11,35 @@ services:
       - testing_net
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
-      interval: 5s
+      interval: 7s
+      timeout: 30s
+      retries: 3
+  
+  time_queue:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15673:15673
+    networks:
+      - testing_net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 7s
+      timeout: 30s
+      retries: 3
+
+  mont_royal_queue:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15674:15674
+    networks:
+      - testing_net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 7s
       timeout: 30s
       retries: 3
 
@@ -29,7 +57,41 @@ services:
     volumes:
       - ./rain_filter/config.ini:/config.ini
     depends_on:
-      rabbitmq:
+      weather_queue:
+        condition: service_healthy
+
+  time_filter:
+    image: time_filter:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: time_filter/time_filter.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./time_filter/config.ini:/config.ini
+    depends_on:
+      time_queue:
+        condition: service_healthy
+
+  mont_royal_filter:
+    image: mont_royal_filter:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: mont_royal_filter/mont_royal_filter.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./mont_royal_filter/config.ini:/config.ini
+    depends_on:
+      mont_royal_queue:
         condition: service_healthy
 
   server:
@@ -46,6 +108,8 @@ services:
       - testing_net
     depends_on:
       - rain_filter
+      - time_filter
+      - mont_royal_filter
     volumes:
       - ./server/config.ini:/config.ini
 

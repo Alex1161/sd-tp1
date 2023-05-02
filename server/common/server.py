@@ -3,12 +3,16 @@ import struct
 import logging
 import signal
 import sys
+import pika
 from .stations_processor import StationsProcessor
 HEADER_SIZE = 4
 ACK = b'0'
 ERROR = b'1'
 EOD = b'EOD'
 EOF = b'EOF'
+RAIN_FILTER = 'rain_filter'
+TIME_FILTER = 'time_filter'
+MONT_ROYAL_FILTER = 'mont_royal_filter'
 
 
 class Server:
@@ -17,7 +21,20 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
-        self._processor = StationsProcessor()
+
+        rain_filter_connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='weather_queue'))
+        time_filter_connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='time_queue'))
+        mont_royal_filter_connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='mont_royal_queue'))
+        self._connections = {
+            RAIN_FILTER: rain_filter_connection,
+            TIME_FILTER: time_filter_connection,
+            MONT_ROYAL_FILTER: mont_royal_filter_connection
+        }
+        self._processor = StationsProcessor(self._connections)
+
         signal.signal(signal.SIGTERM, self.__exit_gracefully)
 
     def __exit_gracefully(self, *args):

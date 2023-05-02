@@ -1,47 +1,41 @@
 import pika
 import logging
 import pandas as pd
-from datetime import datetime, timedelta
 EOF = b'EOF'
 EOD = b'EOD'
 LOADING = 0
 PROCESSING = 1
-COLUMNS_WEATHER = ['date', 'precto']
+COLUMNS_STATION = ['code', 'name']
 COLUMNS_TRIPS = ['start_ts', 'duration']
 
 
-class RainFilter():
+class TimeFilter():
     def __init__(self):
         self._state = LOADING
-        self._weather = pd.DataFrame(columns=COLUMNS_WEATHER)
+        self._stations = pd.DataFrame(columns=COLUMNS_STATION)
 
         self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='weather_queue'))
+            pika.ConnectionParameters(host='time_queue'))
         self._channel = self._connection.channel()
 
         self._channel.queue_declare(queue='task_queue', durable=True)
 
     def _persist(self, rows):
         for row in rows:
-            self._weather.loc[len(self._weather)] = row
+            self._stations.loc[len(self._stations)] = row
 
-    def filter_msg(self, ch, method, properties, body):
+    def _filter_msg(self, ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
         if self._state == LOADING:
             if body == EOF:
                 self._state = PROCESSING
-                logging.info(f'action: EOF_detected | result: success | data: {self._weather}')
+                logging.info(f'action: EOF_detected | result: success | data: {self._stations}')
                 return
 
             rows_str = body.decode('utf-8')
             rows = [row.split(',') for row in rows_str.split('\n')]
-            rows_filtered = filter(lambda x: float(x[1]) > 0.3, rows)
-            rows_date_cured = list(map(
-                lambda row: [(datetime.strptime(row[0], "%Y-%m-%d") - timedelta(days=1)).date(), row[1]],
-                rows_filtered
-            ))
 
-            self._persist(rows_date_cured)
+            self._persist(rows)
 
             logging.debug(f'action: rain_filter_filtering | result: success | msg_filtered: {body}')
         elif self._state == PROCESSING:
@@ -57,6 +51,6 @@ class RainFilter():
 
     def run(self):
         self._channel.basic_qos(prefetch_count=1)
-        self._channel.basic_consume(queue='task_queue', on_message_callback=self.filter_msg)
+        self._channel.basic_consume(queue='task_queue', on_message_callback=self._filter_msg)
 
         self._channel.start_consuming()
