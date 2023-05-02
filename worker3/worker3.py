@@ -15,7 +15,7 @@ class Worker3():
         self._stations = pd.DataFrame(columns=COLUMNS_STATION)
 
         self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='time_queue'))
+            pika.ConnectionParameters(host='worker3_queue'))
         self._channel = self._connection.channel()
 
         self._channel.queue_declare(queue='task_queue', durable=True)

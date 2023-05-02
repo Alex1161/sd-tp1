@@ -21,6 +21,10 @@ class RainFilter():
 
         self._channel.queue_declare(queue='task_queue', durable=True)
 
+        self._worker1_connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='worker1_queue'))
+        self._channel_worker1 = self._worker1_connection.channel()
+
     def _persist(self, rows):
         for row in rows:
             self._weather.loc[len(self._weather)] = row
@@ -47,6 +51,14 @@ class RainFilter():
             logging.debug(f'action: rain_filter_loading | result: success | loaded: {body}')
         elif self._state == PROCESSING:
             if body == EOF:
+                self._channel_worker1.basic_publish(
+                    exchange='',
+                    routing_key='task_queue',
+                    body=EOF,
+                    properties=pika.BasicProperties(
+                        delivery_mode=2,  # make message persistent
+                    )
+                )
                 logging.info(f'action: EOF_detected | result: success')
                 return
 
@@ -61,6 +73,14 @@ class RainFilter():
                 return
 
             msg = trips_rain.to_csv(None, index=False, header=False)
+            self._channel_worker1.basic_publish(
+                exchange='',
+                routing_key='task_queue',
+                body=msg,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # make message persistent
+                )
+            )
             logging.debug(f'action: rain_filter_filtering | result: success | msg_filtered: {msg}')
 
     def run(self):
