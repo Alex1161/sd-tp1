@@ -1,6 +1,99 @@
 version: '3.9'
 name: tp0
 services:
+  worker1_queue:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15677:15677
+    networks:
+      - testing_net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+  
+  worker2_queue:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15676:15676
+    networks:
+      - testing_net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+
+  worker3_queue:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15675:15675
+    networks:
+      - testing_net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+
+  worker1:
+    image: worker1:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: worker1/worker1.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./worker1/config.ini:/config.ini
+    depends_on:
+      worker1_queue:
+        condition: service_healthy
+
+  worker2:
+    image: worker2:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: worker2/worker2.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./worker2/config.ini:/config.ini
+    depends_on:
+      worker2_queue:
+        condition: service_healthy
+
+  worker3:
+    image: worker3:latest
+    entrypoint: python3 /main.py
+    build:
+      dockerfile: worker3/worker3.dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+    networks:
+      - testing_net
+    volumes:
+      - ./worker3/config.ini:/config.ini
+    depends_on:
+      worker3_queue:
+        condition: service_healthy
+
   weather_queue:
     build:
       context: ./rabbitmq
@@ -11,7 +104,7 @@ services:
       - testing_net
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
-      interval: 7s
+      interval: 10s
       timeout: 30s
       retries: 3
   
@@ -25,7 +118,7 @@ services:
       - testing_net
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
-      interval: 7s
+      interval: 10s
       timeout: 30s
       retries: 3
 
@@ -39,7 +132,7 @@ services:
       - testing_net
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
-      interval: 7s
+      interval: 10s
       timeout: 30s
       retries: 3
 
@@ -59,6 +152,8 @@ services:
     depends_on:
       weather_queue:
         condition: service_healthy
+      worker1_queue:
+        condition: service_healthy
 
   time_filter:
     image: time_filter:latest
@@ -76,6 +171,8 @@ services:
     depends_on:
       time_queue:
         condition: service_healthy
+      worker2_queue:
+        condition: service_healthy
 
   mont_royal_filter:
     image: mont_royal_filter:latest
@@ -92,6 +189,8 @@ services:
       - ./mont_royal_filter/config.ini:/config.ini
     depends_on:
       mont_royal_queue:
+        condition: service_healthy
+      worker3_queue:
         condition: service_healthy
 
   server:

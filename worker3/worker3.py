@@ -5,17 +5,17 @@ EOF = b'EOF'
 EOD = b'EOD'
 LOADING = 0
 PROCESSING = 1
-COLUMNS_STATIONS = ['code', 'name', 'latitude', 'longitude']
-COLUMNS_TRIPS = ['start_station_code', 'end_station_code']
+COLUMNS_STATION = ['code', 'name']
+COLUMNS_TRIPS = ['code', 'yearid']
 
 
-class MontRoyalFilter():
+class Worker3():
     def __init__(self):
         self._state = LOADING
-        self._stations = pd.DataFrame(columns=COLUMNS_STATIONS)
+        self._stations = pd.DataFrame(columns=COLUMNS_STATION)
 
         self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='mont_royal_queue'))
+            pika.ConnectionParameters(host='time_queue'))
         self._channel = self._connection.channel()
 
         self._channel.queue_declare(queue='task_queue', durable=True)
@@ -31,8 +31,6 @@ class MontRoyalFilter():
                 self._state = PROCESSING
                 self._stations['code'] = self._stations['code'].astype(str)
                 self._stations['name'] = self._stations['name'].astype(str)
-                self._stations['latitude'] = self._stations['latitude'].astype(float)
-                self._stations['longitude'] = self._stations['longitude'].astype(float)
                 logging.info(f'action: EOF_detected | result: success | data: {self._stations}')
                 return
 
@@ -41,7 +39,7 @@ class MontRoyalFilter():
 
             self._persist(rows)
 
-            logging.debug(f'action: mont_royal_filter_loading | result: success | msg_filtered: {body}')
+            logging.debug(f'action: time_filter_loading | result: success | msg_filtered: {body}')
         elif self._state == PROCESSING:
             if body == EOF:
                 logging.info(f'action: EOF_detected | result: success')
@@ -50,15 +48,16 @@ class MontRoyalFilter():
             rows_str = body.decode('utf-8')
             rows = [row.split(',') for row in rows_str.split('\n')]
             trips = pd.DataFrame(rows, columns=COLUMNS_TRIPS)
-            trips['start_station_code'] = trips['start_station_code'].astype(str)
-            trips['end_station_code'] = trips['end_station_code'].astype(str)
-            trips_merged = trips.merge(self._stations, left_on='start_station_code', right_on='code')
-            trips_merged = trips_merged.merge(self._stations, left_on='end_station_code', right_on='code')[['end_station_code', 'name_y', 'latitude_x', 'longitude_x', 'latitude_y', 'longitude_y']]
-            if trips_merged.empty:
+            trips['code'] = trips['code'].astype(str)
+            trips['yearid'] = trips['yearid'].astype(int)
+            trips_filtered = trips.loc[(trips['yearid'] == 2016) | (trips['yearid'] == 2017)]
+            trips_filtered_merged = trips_filtered.merge(self._stations, left_on='code', right_on='code')
+            if trips_filtered_merged.empty:
                 return
 
-            msg = trips_merged.to_csv(None, index=False, header=False)
-            logging.debug(f'action: mont_royal_filter_filtering | result: success | msg_filtered: {msg}')
+            msg = trips_filtered_merged.to_csv(None, index=False, header=False)
+            logging.debug(f'action: time_filter_filtering | result: success | msg_filtered: {msg}')
+
 
     def run(self):
         self._channel.basic_qos(prefetch_count=1)
