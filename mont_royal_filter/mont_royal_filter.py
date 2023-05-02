@@ -57,7 +57,7 @@ class MontRoyalFilter():
             if trips_merged.empty:
                 return
 
-            msg = trips_merged.to_csv(None, index=False, header=False)
+            msg = trips_merged.to_csv(None, index=False, header=False)[:-1]
             logging.debug(f'action: mont_royal_filter_filtering | result: success | msg_filtered: {msg}')
 
     def run(self):

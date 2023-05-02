@@ -20,6 +20,10 @@ class TimeFilter():
 
         self._channel.queue_declare(queue='task_queue', durable=True)
 
+        self._worker2_connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='worker2_queue'))
+        self._channel_worker2 = self._worker2_connection.channel()
+
     def _persist(self, rows):
         for row in rows:
             self._stations.loc[len(self._stations)] = row
@@ -42,6 +46,14 @@ class TimeFilter():
             logging.debug(f'action: time_filter_loading | result: success | msg_filtered: {body}')
         elif self._state == PROCESSING:
             if body == EOF:
+                self._channel_worker2.basic_publish(
+                    exchange='',
+                    routing_key='task_queue',
+                    body=EOF,
+                    properties=pika.BasicProperties(
+                        delivery_mode=2,  # make message persistent
+                    )
+                )
                 logging.info(f'action: EOF_detected | result: success')
                 return
 
@@ -51,11 +63,20 @@ class TimeFilter():
             trips['code'] = trips['code'].astype(str)
             trips['yearid'] = trips['yearid'].astype(int)
             trips_filtered = trips.loc[(trips['yearid'] == 2016) | (trips['yearid'] == 2017)]
-            trips_filtered_merged = trips_filtered.merge(self._stations, left_on='code', right_on='code')
+            trips_filtered_merged = trips_filtered.merge(self._stations, left_on='code', right_on='code')[['name', 'yearid']]
             if trips_filtered_merged.empty:
                 return
 
-            msg = trips_filtered_merged.to_csv(None, index=False, header=False)
+            msg = trips_filtered_merged.to_csv(None, index=False, header=False)[:-1]
+            self._channel_worker2.basic_publish(
+                exchange='',
+                routing_key='task_queue',
+                body=msg,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # make message persistent
+                )
+            )
+
             logging.debug(f'action: time_filter_filtering | result: success | msg_filtered: {msg}')
 
 

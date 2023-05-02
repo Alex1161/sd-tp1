@@ -25,7 +25,7 @@ class Worker1():
     def _process_msg(self, ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
         if body == EOF:
-            msg = self._result.to_csv(None, index=False, header=False)
+            msg = self._result.to_csv(None, index=False, header=False)[:-1]
             logging.info(f'action: EOF_detected | result: success | result: {msg}')
             return
 

@@ -72,7 +72,7 @@ class RainFilter():
             if trips_rain.empty:
                 return
 
-            msg = trips_rain.to_csv(None, index=False, header=False)
+            msg = trips_rain.to_csv(None, index=False, header=False)[:-1]
             self._channel_worker1.basic_publish(
                 exchange='',
                 routing_key='task_queue',
